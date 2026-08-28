@@ -1,93 +1,106 @@
 # Sleepbridge Alarm
 
-Минимальный Android/Kotlin-прототип для сценария:
+Android-прототип будильника, который связывает Gadgetbridge и Xiaomi Smart Band 9.
 
-`Gadgetbridge + Xiaomi Smart Band 9 обнаружили сон -> прибавляем заданную длительность сна -> ставим Android-будильник -> по возможности ставим будильник на браслете через Gadgetbridge`
+Приложение получает событие начала сна от Gadgetbridge, прибавляет заданную длительность и ставит будильник на телефоне. При наличии MAC-адреса браслета и разрешения Gadgetbridge оно также создаёт будильник на Xiaomi Smart Band 9.
 
-## Что проверено в Gadgetbridge
+## Возможности
 
-- В Gadgetbridge есть `Device actions`: при обнаружении сна устройство может отправить Android broadcast. Стандартная строка события засыпания в актуальных исходниках: `nodomain.freeyourgadget.gadgetbridge.FellAsleep`.
-- В актуальной документации и исходниках Codeberg есть no-root alarm intent API:
-  - `nodomain.freeyourgadget.gadgetbridge.command.SET_ALARM`
-  - `nodomain.freeyourgadget.gadgetbridge.command.DISMISS_ALARM`
-  - extras: `device`, `hour`, `minutes`, `title`, для удаления по названию `mode=title`
-- Xiaomi Smart Band 9 в Gadgetbridge все еще помечен как experimental, поэтому надежность live-события сна зависит от версии Gadgetbridge, прошивки браслета и того, умеет ли конкретная связка отдавать `SLEEP_STATE_DETECTION`.
+- live-событие `FellAsleep` от Gadgetbridge;
+- настраиваемая длительность сна в часах и минутах;
+- точный будильник Android с экраном, звуком и вибрацией;
+- дополнительный будильник на браслете через публичный intent API Gadgetbridge;
+- foreground-сервис для ожидания события сна;
+- тестовое событие из приложения или через ADB;
+- восстановление слушателя после перезагрузки телефона.
 
-Источники:
+## Как это работает
 
-- https://gadgetbridge.org/internals/automations/events/
-- https://gadgetbridge.org/internals/automations/intents/
-- https://gadgetbridge.org/internals/automations/intents/alarms/
-- https://codeberg.org/Freeyourgadget/Gadgetbridge/src/branch/master/app/src/main/java/nodomain/freeyourgadget/gadgetbridge/externalevents/DeviceAlarmReceiver.java
-- https://codeberg.org/Freeyourgadget/Gadgetbridge/src/branch/master/app/src/main/java/nodomain/freeyourgadget/gadgetbridge/devices/xiaomi/watches/MiBand9Coordinator.java
+```text
+Xiaomi Smart Band 9
+        |
+        v
+Gadgetbridge: FellAsleep broadcast
+        |
+        v
+Sleepbridge Alarm: время сна + заданная длительность
+        |
+        +--> Android AlarmManager
+        |
+        +--> Gadgetbridge SET_ALARM -> браслет
+```
 
-## Архитектура приложения
+Приложение не читает приватную базу данных Gadgetbridge и не требует root или LSPosed.
 
-- `MainActivity` - простой экран настроек и кнопка теста.
-- `SleepWatchService` - foreground-сервис, который динамически слушает broadcast от Gadgetbridge.
-- `SleepEventReceiver` - запасной manifest-приемник и тестовая точка входа.
-- `SleepAlarmEngine` - собирает сценарий целиком после события сна.
-- `SleepAlarmCalculator` - чистый расчет времени будильника.
-- `AndroidAlarmScheduler` - ставит собственный in-app alarm и, опционально, будильник через Android Clock.
-- `GadgetbridgeAlarmClient` - общается с Gadgetbridge только через публичные broadcasts.
+## Требования
 
-## Настройка на телефоне
+- Android Studio с Android SDK;
+- Android 8.0 или новее;
+- установленный Gadgetbridge;
+- Xiaomi Smart Band 9, подключённый к Gadgetbridge.
 
-1. Установи актуальный Gadgetbridge: обычную сборку, F-Droid или nightly.
-2. Подключи Xiaomi Smart Band 9 в Gadgetbridge.
-3. В Gadgetbridge открой настройки браслета.
-4. Открой `Device actions`.
-5. Для `On Fall Asleep` выбери `Send Broadcast`.
-6. Укажи broadcast message:
+## Настройка Gadgetbridge
+
+1. Открой настройки Xiaomi Smart Band 9 в Gadgetbridge.
+2. Перейди в `Device actions`.
+3. Для `On Fall Asleep` выбери `Send Broadcast`.
+4. В поле broadcast message укажи:
 
    ```text
    nodomain.freeyourgadget.gadgetbridge.FellAsleep
    ```
 
-7. Для вибрации/будильника на браслете включи в настройках устройства Gadgetbridge разрешение для сторонних приложений ставить будильники: обычно это `Developer settings -> allow 3rd party apps to set alarms`.
-8. В Sleepbridge Alarm введи MAC-адрес браслета так, как он показан в Gadgetbridge.
+5. Если нужен будильник на браслете, разреши сторонним приложениям устанавливать будильники в настройках устройства Gadgetbridge. Обычно это находится в `Developer settings`.
+6. Запусти Sleepbridge Alarm, укажи длительность сна и MAC-адрес браслета.
+7. Нажми `Save and start`.
 
-## Сборка
+## Сборка и установка
 
-Открой папку проекта в Android Studio:
+Открой корневую папку проекта в Android Studio и дождись синхронизации Gradle. Затем выбери телефон или эмулятор и нажми `Run`.
 
-```text
-C:\Users\User\Documents\Codex\2026-08-29\referenced-chatgpt-conversation-this-is-an\outputs\sleepbridge-alarm
-```
-
-Или собери из терминала, если установлен Android SDK:
+Из терминала Windows:
 
 ```powershell
 .\gradlew.bat assembleDebug
-```
-
-Установка APK:
-
-```powershell
 adb install .\app\build\outputs\apk\debug\app-debug.apk
 ```
 
-## Проверка без ожидания сна
+## Быстрая проверка
 
-Открой приложение, нажми `Save and start`, затем нажми `Test sleep event`.
+После запуска приложения нажми `Save and start`, затем `Test sleep event`.
 
-ADB-вариант:
+Или отправь тестовое событие через ADB:
 
 ```powershell
 adb shell am broadcast -a dev.sleepbridge.alarm.TEST_FELL_ASLEEP -p dev.sleepbridge.alarm
 ```
 
-Если MAC и разрешение Gadgetbridge настроены, приложение дополнительно отправит в Gadgetbridge:
+Через несколько секунд приложение должно запланировать будильник на текущее время плюс заданную длительность.
 
-```text
-DISMISS_ALARM mode=title title="Sleepbridge Alarm"
-SET_ALARM hour=<calculated> minutes=<calculated> title="Sleepbridge Alarm"
-```
+## Архитектура
 
-## Ограничения
+- `MainActivity` хранит настройки и запускает слушатель.
+- `SleepWatchService` принимает события Gadgetbridge в foreground-режиме.
+- `SleepAlarmEngine` координирует расчёт и установку будильников.
+- `SleepAlarmCalculator` содержит чистую логику расчёта времени.
+- `AndroidAlarmScheduler` работает с Android AlarmManager и системным приложением часов.
+- `GadgetbridgeAlarmClient` отправляет публичные intent-команды Gadgetbridge.
 
-- Приложение не читает приватную SQLite-базу Gadgetbridge. Это намеренно: обычному Android-приложению без root/LSPosed такой доступ недоступен.
-- Прототип зависит от live-события сна в Gadgetbridge, а не от постфактум-экспорта сна.
-- Android может попросить разрешение на уведомления, потому что слушатель работает как foreground-сервис.
-- Создание Android Clock alarm зависит от установленного приложения часов. Параллельно прототип ставит собственный in-app alarm как запасной вариант.
-- Gadgetbridge не возвращает structured success/failure для alarm API; ошибки видны в логах Gadgetbridge.
+## Ограничения прототипа
+
+- точность зависит от того, когда конкретная версия Gadgetbridge и прошивка браслета отправляют событие сна;
+- Android может потребовать разрешение на уведомления для foreground-сервиса;
+- создание системного будильника зависит от установленного приложения часов;
+- Gadgetbridge не возвращает приложению структурированный результат установки будильника.
+
+## Источники
+
+- [Gadgetbridge: device actions](https://gadgetbridge.org/internals/automations/events/)
+- [Gadgetbridge: intents](https://gadgetbridge.org/internals/automations/intents/)
+- [Gadgetbridge: alarm intents](https://gadgetbridge.org/internals/automations/intents/alarms/)
+- [Gadgetbridge source: DeviceAlarmReceiver](https://codeberg.org/Freeyourgadget/Gadgetbridge/src/branch/master/app/src/main/java/nodomain/freeyourgadget/gadgetbridge/externalevents/DeviceAlarmReceiver.java)
+- [Gadgetbridge source: MiBand9Coordinator](https://codeberg.org/Freeyourgadget/Gadgetbridge/src/branch/master/app/src/main/java/nodomain/freeyourgadget/gadgetbridge/devices/xiaomi/watches/MiBand9Coordinator.java)
+
+## Статус
+
+Это минимально рабочий прототип. Перед регулярным использованием проверь срабатывание на своём телефоне, особенно при включённой оптимизации батареи и при перезагрузке устройства.
