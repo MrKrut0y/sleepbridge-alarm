@@ -117,7 +117,7 @@ class MainActivity : Activity() {
         EditText(this).apply {
             hint = hintText
             inputType = inputTypeValue
-            singleLine = true
+            setSingleLine(true)
             setPadding(0, 18, 0, 18)
         }
 
