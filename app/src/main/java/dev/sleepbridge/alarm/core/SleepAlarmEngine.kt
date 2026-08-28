@@ -1,6 +1,7 @@
 package dev.sleepbridge.alarm.core
 
 import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import dev.sleepbridge.alarm.alarm.AndroidAlarmScheduler
 import dev.sleepbridge.alarm.data.SettingsStore
@@ -25,22 +26,31 @@ class SleepAlarmEngine(private val context: Context) {
         }
         rememberHandled(now)
 
-        val planned = calculator.plan(now, settings.sleepDuration)
-        val title = settings.bandAlarmTitle.ifBlank { SettingsStore.DEFAULT_ALARM_TITLE }
+        try {
+            val planned = calculator.plan(now, settings.sleepDuration)
+            val title = settings.bandAlarmTitle.ifBlank { SettingsStore.DEFAULT_ALARM_TITLE }
 
-        androidAlarmScheduler.schedule(
-            alarmAt = planned.alarmAt,
-            label = title,
-            alsoCreateClockAlarm = settings.setAndroidClockAlarm
-        )
+            androidAlarmScheduler.schedule(
+                alarmAt = planned.alarmAt,
+                label = title,
+                alsoCreateClockAlarm = settings.setAndroidClockAlarm
+            )
 
-        if (settings.setBandAlarm && settings.hasBandTarget) {
-            GadgetbridgeAlarmClient(context, settings.gadgetbridgePackage)
-                .replaceOwnedAlarm(settings.bandMacAddress, planned.alarmAt, title)
+            if (settings.setBandAlarm && settings.hasBandTarget) {
+                GadgetbridgeAlarmClient(context, settings.gadgetbridgePackage)
+                    .replaceOwnedAlarm(settings.bandMacAddress, planned.alarmAt, title)
+            }
+
+            val time = planned.alarmAt.format(DateTimeFormatter.ofPattern("HH:mm"))
+            Toast.makeText(context, "Sleep detected. Alarm set for $time.", Toast.LENGTH_LONG).show()
+        } catch (error: Exception) {
+            Log.e("SleepAlarmEngine", "Unable to schedule alarm", error)
+            Toast.makeText(
+                context,
+                "Could not set alarm: ${error.message ?: error.javaClass.simpleName}",
+                Toast.LENGTH_LONG
+            ).show()
         }
-
-        val time = planned.alarmAt.format(DateTimeFormatter.ofPattern("HH:mm"))
-        Toast.makeText(context, "Sleep detected. Alarm set for $time.", Toast.LENGTH_LONG).show()
     }
 
     private fun isDuplicate(now: ZonedDateTime): Boolean {

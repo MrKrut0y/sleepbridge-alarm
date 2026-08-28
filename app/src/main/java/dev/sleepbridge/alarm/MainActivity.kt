@@ -18,6 +18,7 @@ import android.widget.TextView
 import android.widget.Toast
 import dev.sleepbridge.alarm.data.SettingsStore
 import dev.sleepbridge.alarm.data.UserSettings
+import dev.sleepbridge.alarm.core.SleepAlarmEngine
 import dev.sleepbridge.alarm.service.SleepWatchService
 
 class MainActivity : Activity() {
@@ -91,7 +92,15 @@ class MainActivity : Activity() {
             text = "Test sleep event"
             setOnClickListener {
                 saveSettings()
-                sendBroadcast(Intent(SleepWatchService.ACTION_TEST_FELL_ASLEEP).setPackage(packageName))
+                runCatching {
+                    SleepAlarmEngine(this@MainActivity).onSleepDetected()
+                }.onFailure {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Test failed: ${it.message ?: it.javaClass.simpleName}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         })
         root.addView(Button(this).apply {
