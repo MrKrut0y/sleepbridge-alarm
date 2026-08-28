@@ -2,6 +2,7 @@ package dev.sleepbridge.alarm.alarm
 
 import android.app.Activity
 import android.media.AudioAttributes
+import android.net.Uri
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.os.Bundle
@@ -12,6 +13,7 @@ import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import dev.sleepbridge.alarm.data.SettingsStore
 
 class AlarmActivity : Activity() {
     private var ringtone: Ringtone? = null
@@ -54,7 +56,9 @@ class AlarmActivity : Activity() {
     }
 
     private fun playAlarm() {
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        val settingsUri = SettingsStore(this).read().alarmAudioUri
+        val uri = settingsUri.toUriOrNull()
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         ringtone = RingtoneManager.getRingtone(this, uri)?.apply {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
@@ -66,6 +70,8 @@ class AlarmActivity : Activity() {
             play()
         }
     }
+
+    private fun String.toUriOrNull(): Uri? = takeIf { it.isNotBlank() }?.let(Uri::parse)
 
     private fun vibrate() {
         vibrator = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {

@@ -31,9 +31,7 @@ class SleepAlarmEngine(private val context: Context) {
             val title = settings.bandAlarmTitle.ifBlank { SettingsStore.DEFAULT_ALARM_TITLE }
 
             androidAlarmScheduler.schedule(
-                alarmAt = planned.alarmAt,
-                label = title,
-                alsoCreateClockAlarm = settings.setAndroidClockAlarm
+                alarmAt = planned.alarmAt
             )
 
             if (settings.setBandAlarm && settings.hasBandTarget) {

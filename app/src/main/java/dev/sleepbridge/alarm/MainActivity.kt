@@ -2,7 +2,6 @@ package dev.sleepbridge.alarm
 
 import android.Manifest
 import android.app.Activity
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
@@ -30,8 +29,9 @@ class MainActivity : Activity() {
     private lateinit var gadgetbridgePackage: EditText
     private lateinit var bandMacAddress: EditText
     private lateinit var alarmTitle: EditText
-    private lateinit var setAndroidAlarm: CheckBox
     private lateinit var setBandAlarm: CheckBox
+    private lateinit var audioStatus: TextView
+    private var alarmAudioUri: String = ""
     private lateinit var status: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,10 +62,8 @@ class MainActivity : Activity() {
         })
 
         enabled = CheckBox(this).apply { text = "Listen for sleep events" }
-        setAndroidAlarm = CheckBox(this).apply { text = "Create Android Clock alarm" }
         setBandAlarm = CheckBox(this).apply { text = "Create Gadgetbridge band alarm" }
         root.addView(enabled)
-        root.addView(setAndroidAlarm)
         root.addView(setBandAlarm)
 
         sleepHours = input("Sleep hours", InputType.TYPE_CLASS_NUMBER)
@@ -79,6 +77,15 @@ class MainActivity : Activity() {
         root.addView(gadgetbridgePackage)
         root.addView(bandMacAddress)
         root.addView(alarmTitle)
+        audioStatus = TextView(this).apply {
+            setPadding(0, 12, 0, 4)
+            textSize = 14f
+        }
+        root.addView(audioStatus)
+        root.addView(Button(this).apply {
+            text = "Choose alarm audio"
+            setOnClickListener { chooseAlarmAudio() }
+        })
 
         root.addView(Button(this).apply {
             text = "Save and start"
@@ -133,8 +140,8 @@ class MainActivity : Activity() {
     private fun loadSettings() {
         val settings = store.read()
         enabled.isChecked = settings.enabled
-        setAndroidAlarm.isChecked = settings.setAndroidClockAlarm
         setBandAlarm.isChecked = settings.setBandAlarm
+        alarmAudioUri = settings.alarmAudioUri
         sleepHours.setText(settings.sleepHours.toString())
         sleepMinutes.setText(settings.sleepMinutes.toString())
         gadgetbridgePackage.setText(settings.gadgetbridgePackage)
@@ -152,7 +159,7 @@ class MainActivity : Activity() {
                 .ifBlank { SettingsStore.DEFAULT_GADGETBRIDGE_PACKAGE },
             bandMacAddress = bandMacAddress.text.toString(),
             bandAlarmTitle = alarmTitle.text.toString().ifBlank { SettingsStore.DEFAULT_ALARM_TITLE },
-            setAndroidClockAlarm = setAndroidAlarm.isChecked,
+            alarmAudioUri = alarmAudioUri,
             setBandAlarm = setBandAlarm.isChecked
         )
         store.save(settings)
@@ -169,6 +176,38 @@ class MainActivity : Activity() {
             append("Current sleep duration: ${settings.sleepHours}h ${settings.sleepMinutes}m\n")
             append("Band target: ${if (settings.hasBandTarget) settings.bandMacAddress else "not configured"}")
         }
+        audioStatus.text = if (settings.alarmAudioUri.isBlank()) {
+            "Alarm audio: system default"
+        } else {
+            "Alarm audio: selected file"
+        }
+    }
+
+    private fun chooseAlarmAudio() {
+        val intent = android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
+            type = "audio/*"
+            addCategory(android.content.Intent.CATEGORY_OPENABLE)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(android.content.Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+        }
+        startActivityForResult(intent, REQUEST_AUDIO)
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_AUDIO && resultCode == RESULT_OK) {
+            data?.data?.let { uri ->
+                runCatching {
+                    contentResolver.takePersistableUriPermission(
+                        uri,
+                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                }
+                alarmAudioUri = uri.toString()
+                saveSettings()
+            }
+        }
     }
 
     private fun requestNotificationPermission() {
@@ -177,5 +216,9 @@ class MainActivity : Activity() {
         ) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 9001)
         }
+    }
+
+    companion object {
+        private const val REQUEST_AUDIO = 9101
     }
 }

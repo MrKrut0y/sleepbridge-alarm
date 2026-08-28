@@ -9,7 +9,7 @@ data class UserSettings(
     val gadgetbridgePackage: String,
     val bandMacAddress: String,
     val bandAlarmTitle: String,
-    val setAndroidClockAlarm: Boolean,
+    val alarmAudioUri: String,
     val setBandAlarm: Boolean
 ) {
     val sleepDuration: Duration

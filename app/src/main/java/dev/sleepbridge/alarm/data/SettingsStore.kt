@@ -13,7 +13,7 @@ class SettingsStore(context: Context) {
             ?: DEFAULT_GADGETBRIDGE_PACKAGE,
         bandMacAddress = prefs.getString(KEY_BAND_MAC, "") ?: "",
         bandAlarmTitle = prefs.getString(KEY_BAND_ALARM_TITLE, DEFAULT_ALARM_TITLE) ?: DEFAULT_ALARM_TITLE,
-        setAndroidClockAlarm = prefs.getBoolean(KEY_SET_ANDROID_CLOCK_ALARM, true),
+        alarmAudioUri = prefs.getString(KEY_ALARM_AUDIO_URI, "") ?: "",
         setBandAlarm = prefs.getBoolean(KEY_SET_BAND_ALARM, true)
     )
 
@@ -25,7 +25,7 @@ class SettingsStore(context: Context) {
             .putString(KEY_GADGETBRIDGE_PACKAGE, settings.gadgetbridgePackage.trim())
             .putString(KEY_BAND_MAC, settings.bandMacAddress.trim().uppercase())
             .putString(KEY_BAND_ALARM_TITLE, settings.bandAlarmTitle.trim())
-            .putBoolean(KEY_SET_ANDROID_CLOCK_ALARM, settings.setAndroidClockAlarm)
+            .putString(KEY_ALARM_AUDIO_URI, settings.alarmAudioUri)
             .putBoolean(KEY_SET_BAND_ALARM, settings.setBandAlarm)
             .apply()
     }
@@ -40,7 +40,7 @@ class SettingsStore(context: Context) {
         private const val KEY_GADGETBRIDGE_PACKAGE = "gadgetbridge_package"
         private const val KEY_BAND_MAC = "band_mac"
         private const val KEY_BAND_ALARM_TITLE = "band_alarm_title"
-        private const val KEY_SET_ANDROID_CLOCK_ALARM = "set_android_clock_alarm"
+        private const val KEY_ALARM_AUDIO_URI = "alarm_audio_uri"
         private const val KEY_SET_BAND_ALARM = "set_band_alarm"
     }
 }
